@@ -1,65 +1,103 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { useAuth } from "@clerk/nextjs";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
+type Status = "idle" | "loading" | "streaming" | "done" | "error";
 
 export default function Home() {
+  const [output, setOutput] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+  const { getToken } = useAuth();
+
+  async function generate() {
+    setOutput("");
+    setStatus("loading");
+
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/ideas`, {
+        headers: {
+          Accept: "text/plain",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      if (!res.body) throw new Error("No response body");
+
+      setStatus("streaming");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        setOutput((prev) => prev + decoder.decode(value, { stream: true }));
+      }
+
+      setStatus("done");
+    } catch (err) {
+      setOutput(`Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setStatus("error");
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen flex flex-col items-center px-4 py-16">
+      <div className="text-center mb-12 max-w-2xl">
+        <div className="inline-flex items-center gap-2 bg-violet-950/50 border border-violet-800/40 text-violet-400 text-xs font-medium px-3 py-1 rounded-full mb-4">
+          ⚡ Powered by Cerebras · llama3.1-8b
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-50 mb-3">
+          AI SaaS Idea Generator
+        </h1>
+        <p className="text-zinc-400 text-lg leading-relaxed">
+          Generate 3 investor-ready, B2B SaaS ideas with full business models,
+          pricing, and MVP scope — streamed live in seconds.
+        </p>
+      </div>
+
+      <button
+        onClick={generate}
+        disabled={status === "loading" || status === "streaming"}
+        className="mb-12 flex items-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-900 disabled:cursor-not-allowed text-white font-semibold px-8 py-3 rounded-full transition-all duration-200 shadow-lg shadow-violet-900/40"
+      >
+        {status === "loading" && (
+          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        )}
+        {status === "streaming" && (
+          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+        )}
+        {status === "loading" ? "Thinking..." : status === "streaming" ? "Generating..." : "Generate Ideas"}
+      </button>
+
+      {output && (
+        <div className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
+          <div className="prose">
+            <ReactMarkdown>{output}</ReactMarkdown>
+          </div>
+          {status === "done" && (
+            <div className="mt-6 pt-4 border-t border-zinc-800 flex justify-end">
+              <button
+                onClick={generate}
+                className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
+              >
+                ↺ Generate new ideas
+              </button>
+            </div>
+          )}
         </div>
-      </main>
+      )}
+
+      {status === "idle" && (
+        <p className="text-zinc-600 text-sm mt-4">
+          Click the button to generate your first batch of ideas.
+        </p>
+      )}
     </div>
   );
 }
