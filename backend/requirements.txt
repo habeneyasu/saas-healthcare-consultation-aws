@@ -1,6 +1,6 @@
 fastapi[standard]
-langchain
-langchain-openai
+cerebras-cloud-sdk
 python-dotenv
+httpx
 pydantic
 fastapi-clerk-auth
