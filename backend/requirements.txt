@@ -1,6 +1,4 @@
 fastapi[standard]
-cerebras-cloud-sdk
 python-dotenv
 httpx
 pydantic
-fastapi-clerk-auth
