@@ -90,3 +90,54 @@ def build_idea_messages(pro: bool = False) -> list[dict]:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": USER_PROMPT_PRO if pro else USER_PROMPT_FREE},
     ]
+
+
+CONSULTATION_SYSTEM_PROMPT = """You are a professional clinical AI assistant providing structured preliminary health assessments.
+You are NOT a licensed physician. Never diagnose. Always recommend professional care for serious symptoms.
+Be precise, empathetic, and clinically structured. Use clear language — no jargon.
+Format your response strictly in clean Markdown with clear section headers."""
+
+def build_consultation_messages(name: str, date: str, complaint: str) -> list[dict]:
+    return [
+        {"role": "system", "content": CONSULTATION_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": f"""New patient consultation:
+
+**Patient**: {name}
+**Date**: {date}
+**Chief Complaint**: {complaint}
+
+Respond using ONLY this exact Markdown structure — no deviations:
+
+---
+
+# 🩺 Consultation Report
+
+**Patient:** {name}
+**Date:** {date}
+**Complaint:** {complaint}
+
+---
+
+## 📋 Clinical Assessment
+[2–3 sentences analyzing the reported symptoms objectively and clinically]
+
+## 🔍 Possible Causes
+[List 3–4 ranked causes from most to least likely, each with a one-line explanation]
+
+## ✅ Recommended Actions
+[3–5 specific, actionable steps the patient can take immediately at home]
+
+## 🚨 When to Seek Medical Care
+[List specific red-flag symptoms that require urgent or emergency attention]
+
+## ⚡ Urgency Level
+**[Low / Moderate / High / Emergency]** — [One sentence justifying the urgency level]
+
+---
+
+> ⚠️ *This report is AI-generated preliminary guidance only and does not constitute medical advice or diagnosis. Always consult a licensed healthcare professional for proper evaluation and treatment.*""",
+        },
+    ]
+

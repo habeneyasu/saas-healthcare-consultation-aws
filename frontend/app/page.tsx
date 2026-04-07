@@ -1,226 +1,80 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import { useAuth, SignInButton } from "@clerk/nextjs";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-type Status = "idle" | "loading" | "streaming" | "done" | "error";
-
-const LOADING_STEPS = [
-  "Analyzing B2B market gaps...",
-  "Identifying high-value ICPs...",
-  "Designing AI agent workflows...",
-  "Scoping MVP features...",
-  "Crafting pricing strategies...",
-  "Finalizing your ideas...",
-];
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const [output, setOutput] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stepRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { isSignedIn, getToken } = useAuth();
-
-  useEffect(() => {
-    if (status === "streaming") {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [output, status]);
-
-  useEffect(() => {
-    if (status === "loading" || status === "streaming") {
-      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-      stepRef.current = setInterval(
-        () => setLoadingStep((s) => (s + 1) % LOADING_STEPS.length),
-        1800
-      );
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (stepRef.current) clearInterval(stepRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (stepRef.current) clearInterval(stepRef.current);
-    };
-  }, [status]);
-
-  async function generate() {
-    setOutput("");
-    setStatus("loading");
-    setElapsed(0);
-    setLoadingStep(0);
-
-    try {
-      const headers: Record<string, string> = { Accept: "text/plain" };
-      if (isSignedIn) {
-        const token = await getToken();
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`${API_URL}/api/ideas`, { headers });
-
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      if (!res.body) throw new Error("No response body");
-
-      setStatus("streaming");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        setOutput((prev) => prev + decoder.decode(value, { stream: true }));
-      }
-
-      setStatus("done");
-    } catch (err) {
-      setOutput(`Something went wrong: ${err instanceof Error ? err.message : "Unknown error"}`);
-      setStatus("error");
-    }
-  }
-
-  const isActive = status === "loading" || status === "streaming";
+  const router = useRouter();
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-16 relative">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative">
 
       {/* Background glow */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-violet-700/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-violet-700/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Hero */}
-      <div className="text-center mb-10 max-w-2xl relative z-10">
-        <div className="inline-flex items-center gap-2 bg-violet-950/60 border border-violet-800/40 text-violet-400 text-xs font-medium px-3 py-1 rounded-full mb-5">
-          ⚡ Cerebras · llama3.1-8b · Ultra-fast inference
+      <div className="text-center mb-16 max-w-2xl relative z-10">
+        <div className="inline-flex items-center gap-2 bg-violet-950/60 border border-violet-800/40 text-violet-400 text-xs font-medium px-3 py-1 rounded-full mb-6">
+          ⚡ Powered by Cerebras · llama3.1-8b
         </div>
         <h1 className="text-5xl font-bold tracking-tight text-zinc-50 mb-4 leading-tight">
-          AI SaaS<br />
-          <span className="text-violet-400">Idea Generator</span>
+          What would you like<br />
+          <span className="text-violet-400">to do today?</span>
         </h1>
         <p className="text-zinc-400 text-lg leading-relaxed">
-          Generate investor-ready B2B SaaS ideas — complete with pricing,
-          MVP scope, and GTM strategy — streamed live in seconds.
+          Choose a tool below to get started. Both are powered by real-time AI streaming.
         </p>
       </div>
 
-      {/* Tier badge */}
-      <div className="flex items-center gap-3 mb-8 relative z-10">
-        {isSignedIn ? (
-          <span className="inline-flex items-center gap-1.5 bg-violet-900/40 border border-violet-700/50 text-violet-300 text-xs font-semibold px-3 py-1.5 rounded-full">
-            ✦ Pro — 3 ideas · 20 requests/day
-          </span>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 bg-zinc-800/60 border border-zinc-700/50 text-zinc-400 text-xs font-medium px-3 py-1.5 rounded-full">
-              Free — 1 idea · 3 requests/day
-            </span>
-            <SignInButton mode="modal">
-              <button className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
-                Sign in for Pro
-              </button>
-            </SignInButton>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-3xl relative z-10">
+
+        {/* Idea Generator Card */}
+        <button
+          onClick={() => router.push("/ideas")}
+          className="group text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-violet-700/50 rounded-2xl p-8 transition-all duration-200 shadow-xl hover:shadow-violet-900/20"
+        >
+          <div className="text-3xl mb-4">🚀</div>
+          <h2 className="text-xl font-semibold text-zinc-50 mb-2 group-hover:text-violet-300 transition-colors">
+            SaaS Idea Generator
+          </h2>
+          <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+            Generate 3 investor-ready B2B SaaS ideas with pricing, MVP scope, and GTM strategy — streamed live.
+          </p>
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="bg-zinc-800 px-2 py-1 rounded-full">Free: 1 idea</span>
+            <span className="bg-violet-900/40 text-violet-400 px-2 py-1 rounded-full">Pro: 3 ideas</span>
           </div>
-        )}
+          <div className="mt-6 text-violet-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+            Get started →
+          </div>
+        </button>
+
+        {/* Health Consultation Card */}
+        <button
+          onClick={() => router.push("/consultation")}
+          className="group text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-700/50 rounded-2xl p-8 transition-all duration-200 shadow-xl hover:shadow-emerald-900/20"
+        >
+          <div className="text-3xl mb-4">🩺</div>
+          <h2 className="text-xl font-semibold text-zinc-50 mb-2 group-hover:text-emerald-300 transition-colors">
+            Health Consultation
+          </h2>
+          <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+            Get a structured AI health assessment with possible causes, recommended actions, and urgency level.
+          </p>
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="bg-zinc-800 px-2 py-1 rounded-full">Instant response</span>
+            <span className="bg-emerald-900/40 text-emerald-400 px-2 py-1 rounded-full">Streamed live</span>
+          </div>
+          <div className="mt-6 text-emerald-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+            Get started →
+          </div>
+        </button>
+
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={generate}
-        disabled={isActive}
-        className="relative mb-16 flex items-center gap-3 bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white font-semibold px-10 py-4 rounded-full transition-all duration-200 shadow-lg shadow-violet-900/30 text-base"
-      >
-        {isActive ? (
-          <>
-            <span className="w-4 h-4 border-2 border-zinc-500 border-t-violet-400 rounded-full animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <span className="text-lg">✦</span>
-            {isSignedIn ? "Generate 3 Ideas" : "Generate 1 Idea (Free)"}
-          </>
-        )}
-      </button>
-
-      {/* Loading state */}
-      {status === "loading" && (
-        <div className="w-full max-w-xl mb-8 relative z-10">
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 backdrop-blur">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-zinc-400 text-sm">Thinking with AI...</span>
-              <span className="text-zinc-600 text-xs font-mono">{elapsed}s</span>
-            </div>
-            <div className="w-full bg-zinc-800 rounded-full h-1 mb-4 overflow-hidden">
-              <div className="h-full bg-violet-500 rounded-full animate-pulse w-2/3" />
-            </div>
-            <p className="text-violet-300 text-sm font-medium">{LOADING_STEPS[loadingStep]}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Output */}
-      {output && status !== "error" && (
-        <div className="w-full max-w-3xl relative z-10">
-          {status === "streaming" && (
-            <div className="flex items-center gap-2 mb-4 text-sm text-zinc-500">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              Streaming live · {elapsed}s
-            </div>
-          )}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
-            <div className="prose">
-              <ReactMarkdown>{output}</ReactMarkdown>
-            </div>
-            {status === "streaming" && (
-              <span className="inline-block w-2 h-4 bg-violet-400 animate-pulse ml-1 rounded-sm" />
-            )}
-            {status === "done" && (
-              <div className="mt-6 pt-5 border-t border-zinc-800 flex items-center justify-between">
-                <span className="text-zinc-600 text-xs">Generated in {elapsed}s</span>
-                <div className="flex items-center gap-4">
-                  {!isSignedIn && (
-                    <SignInButton mode="modal">
-                      <button className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
-                        ✦ Sign in for 3 ideas
-                      </button>
-                    </SignInButton>
-                  )}
-                  <button
-                    onClick={generate}
-                    className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
-                  >
-                    ↺ Regenerate
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div ref={bottomRef} />
-        </div>
-      )}
-
-      {/* Error */}
-      {status === "error" && (
-        <div className="w-full max-w-xl relative z-10">
-          <div className="bg-red-950/40 border border-red-800/40 rounded-2xl p-6 text-red-400 text-sm">
-            {output}
-          </div>
-        </div>
-      )}
-
-      {/* Idle */}
-      {status === "idle" && (
-        <p className="text-zinc-700 text-sm relative z-10">
-          Powered by Cerebras ultra-fast inference — results in under 10 seconds.
-        </p>
-      )}
+      <p className="mt-12 text-zinc-700 text-xs relative z-10">
+        AI-generated content only. Not a substitute for professional medical or business advice.
+      </p>
     </div>
   );
 }
